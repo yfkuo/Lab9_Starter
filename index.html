@@ -46,7 +46,7 @@
       padding: 8px 2px;
       width: 122px;
     }
-  </style>
+  </style>             
 </head>
 
 <body>
@@ -69,40 +69,142 @@
     </form>
 
     <section id="error-btns">
-      <button>Console Log</button>
-      <button>Console Error</button>
-      <button>Console Count</button>
-      <button>Console Warn</button>
-      <button>Console Assert</button>
-      <button>Console Clear</button>
-      <button>Console Dir</button>
-      <button>Console dirxml</button>
-      <button>Console Group Start</button>
-      <button>Console Group End</button>
-      <button>Console Table</button>
-      <button>Start Timer</button>
-      <button>End Timer</button>
-      <button>Console Trace</button>
-      <button>Trigger a Global Error</button>
+      <button id="log">Console Log</button>
+      <button id="err">Console Error</button>
+      <button id="count">Console Count</button>
+      <button id="warn">Console Warn</button>
+      <button id="assert">Console Assert</button>
+      <button id="clear">Console Clear</button>
+      <button id="dir">Console Dir</button>
+      <button id="dirxml">Console dirxml</button>
+      <button id="gStart">Console Group Start</button>
+      <button id="gEnd">Console Group End</button>
+      <button id="table">Console Table</button>
+      <button id="startTimer">Start Timer</button>
+      <button id="timerEnd">End Timer</button>
+      <button id="trace">Console Trace</button>
+      <button id="globalErr">Trigger a Global Error</button>
     </section>
   </main>
 
+  <script src="https://cdn.trackjs.com/agent/v3/latest/t.js"></script>
   <script>
+    window.TrackJS && TrackJS.install({ 
+      token: "395a277f1a8544e4bfade820f632a824"
+      // for more configuration options, see https://docs.trackjs.com
+    });
+  </script>
+                          
+  <script>
+    class CalculationError extends Error {
+      constructor(message) {
+        super(message);
+        this.name = this.constructor.name;
+      }
+    }
+
     let form = document.querySelector('form');
     form.addEventListener('submit', e => {
       e.preventDefault();
-      let output = document.querySelector('output');
-      let firstNum = document.querySelector('#first-num').value;
-      let secondNum = document.querySelector('#second-num').value;
-      let operator = document.querySelector('#operator').value;
-      output.innerHTML = eval(`${firstNum} ${operator} ${secondNum}`);
+      try {
+        let firstNum = document.querySelector('#first-num').value;
+        let secondNum = document.querySelector('#second-num').value;
+        let operator = document.querySelector('#operator').value;
+        let output = document.querySelector('output');
+        if (!firstNum) {
+          throw new CalculationError("Missing first input number.");
+        } else if (!secondNum) {
+          throw new CalculationError("Missing second input number.");
+        } else if (isNaN(firstNum)) {
+          throw new CalculationError("First input numbers not a number.");
+        } else if (isNaN(secondNum)) {
+          throw new CalculationError("Second input numbers not a number.");
+        } else if (operator === "/" && secondNum === 0) {
+          throw new CalculationError("Division by 0 is undefined.");
+        }
+        output.innerHTML = eval(`${firstNum} ${operator} ${secondNum}`);
+      } catch (error) {
+        console.error("Calculating Error -> ", error);
+        output.innerHTML = 'Error';
+      } finally {
+        console.log("End of Calculation.")
+      }
     });
 
     let errorBtns = Array.from(document.querySelectorAll('#error-btns > button'));
 
     // Start your code here
     // You may move this JS to another file if you wish
+    let errorMsg = "The number does not equal to 3";
+    const number = 2;
+    const consoleMethods = {
+      log: () => console.log("Console Log Demo"),
+      err: () => console.error("Console Error Demo"),
+      count: () => console.count("Count Button"),
+      warn: () => console.warn("Console Warn Button"),
+      assert: () => console.assert(number === 3, { number: number, errorMsg: errorMsg}),
+      clear: () => console.clear(),
+      dir: () => {
+        let clone = event.target.cloneNode(true);
+        clone.removeAttribute("id");
+        console.dir(clone);
+      },
+      dirxml: () => console.dirxml(event.target),
+      gStart: () => console.group("console.group"),
+      gEnd: () => console.groupEnd(),
+      table: () => console.table([
+        { employeeID: 111, name: 'Alice Johnson', department: 'Engineering' },
+        { employeeID: 112, name: 'Bob Smith', department: 'Marketing' },
+        { employeeID: 113, name: 'Carol Williams', department: 'Finance' }
+      ]),
+      startTimer: () => console.time("Timer Button"),
+      timerEnd: () => console.timeEnd("Timer Button"),
+      trace: () => console.trace("console.trace"),
+      globalErr: () => {
+        let obj = null;
+        obj.property;
+      }
+    };
+
+    errorBtns.forEach(button => {
+      button.addEventListener("click", consoleMethods[button.id]);
+    });
+
+    window.onerror = function(event, source, lineno, colno, error) {
+      console.log("Global Error: ", event);
+      console.log("Source: ", source);
+      console.log("Line: ", lineno);
+      console.log("Column: ", colno);
+      if (error) {
+        console.log("Error object: ", error);
+      }
+      if (window.TrackJS) {
+        TrackJS.track("Error message:", error.event);
+      }
+      
+      fetch(source, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          event,
+          source,
+          lineno,
+          colno,
+          error: error ? error.toString() : null
+        })
+      }).then(response => {
+        console.log("Error message to server: ", response);
+      }).catch(error => {
+        console.error("Error message failed to send to server: ", error);
+      });
+      return true; 
+    };
+
+    
   </script>
 </body>
 
 </html>
+
